@@ -1,0 +1,9 @@
+venv
+*.py[cod]
+__pycache__/
+.DS_Store
+*.code-workspace
+.env
+*.pkl
+*.sqlite
+notes.*

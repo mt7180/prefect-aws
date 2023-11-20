@@ -1,0 +1,111 @@
+name: Create Infrastructure and Deploy Prefect Flow to AWS ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      memory:
+        description: Memory for the agent
+        required: true
+        default: '512'
+        type: choice
+        options: ['512', '1024', '2048', '4096', '5120', '6144', '7168', '8192']
+      aws_region:
+        description: Desired region for AWS resources
+        required: true
+        default: 'eu-central-1'
+        type: string
+
+env:
+  PROJECT: send-energy-report
+  ECS_CLUSTER: prefect-aws-run
+  CPU: '256'
+
+jobs:
+  ecr-repository:
+    name: Create ECR repository
+    # todo: convert to pulumi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Summary
+        run: echo "### Workflow $GITHUB_WORKFLOW with GITHUB_SHA $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ github.event.inputs.AWS_REGION }}
+
+      - name: Create new ECR repository using AWS CloudFormation
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: "${{ env.PROJECT }}-ecr"
+          template: infrastructure/ecr_repository.yml
+          parameter-overrides: "RepositoryName=${{ env.PROJECT }}"
+          no-fail-on-empty-changeset: "1"
+
+      - name: ECR repository built
+        run: echo "ECR repository built at $(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+
+  prefect-flow:
+    name: Deploy and Run Prefect Flow on AWS ECS
+    runs-on: ubuntu-latest
+    needs: ecr-repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ github.event.inputs.AWS_REGION }}
+
+      - name: Add Secrets to SSM Parameter Store (needed for container in ECS task)
+        run: |
+          aws ssm put-parameter --type SecureString --name PREFECT_API_URL --value ${{ secrets.PREFECT_API_URL}} --overwrite
+          aws ssm put-parameter --type SecureString --name PREFECT_API_KEY --value ${{ secrets.PREFECT_API_KEY}} --overwrite
+        
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$PROJECT:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$PROJECT:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$PROJECT:$IMAGE_TAG"
+
+      - name: ECR image built
+        run: echo "ECR image ${{ steps.build-image.outputs.image }} built at $(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deploy to ECS with AWS CloudFormation
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.PROJECT }}
+          template: infrastructure/ecs_service.yml
+          capabilities: CAPABILITY_NAMED_IAM
+          parameter-overrides: "cpu=${{ env.CPU }},memory=${{ github.event.inputs.memory }},project=${{ env.PROJECT }},cluster=${{ env.ECS_CLUSTER }},image=${{ steps.build-image.outputs.image }},awsaccountid=${{ secrets.AWS_ACCOUNT_ID }},region=${{ secrets.AWS_DEFAULT_REGION }}"
+
+      - name: ECS Service Deployment finished
+        run: echo "ECS Service Deployment finished at $(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate task definition
+        run: aws ecs describe-task-definition --task-definition ${{ env.PROJECT }} --query taskDefinition > task-definition.json
+
+      - name: Upload task definition as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ECS task definition
+          path: task-definition.json
+
+      - name: Summary
+        run: echo '### AWS resources and flow successfully deployed! :rocket:' >> $GITHUB_STEP_SUMMARY

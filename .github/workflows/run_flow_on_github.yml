@@ -1,0 +1,35 @@
+name: run selected flow on github
+
+on:
+  workflow_dispatch:
+    inputs:
+      which_flow:
+        description: Choose which flow to run
+        required: true
+        type: choice
+        options: ['get_report.py', 'newsletter.py']
+
+jobs:
+    run:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v3
+    
+          - name: Set up Python 3.9
+            uses: actions/setup-python@v3
+            with:
+              python-version: 3.10
+    
+          - name: Python dependencies
+            run: |
+              pip install -U prefect
+    
+          - name: Prefect Cloud login
+            run: |
+              prefect config set PREFECT_API_KEY=${{secrets.PREFECT_API_KEY}} 
+              prefect cloud workspace set --workspace "${{secrets.PREFECT_WORKSPACE}}"
+          - name: Run the flow
+            run: |
+              export PYTHONPATH="${PYTHONPATH}:/home/runner/work/prefect-getting-started/prefect-getting-started/"
+              python flows/${{ github.event.inputs.flow }}
