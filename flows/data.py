@@ -17,9 +17,9 @@ DEBUG = int(os.getenv("DEBUG_APP2", 0))
 
 
 class DataHandler:
-    def __init__(self):
+    def __init__(self, entsoe_api_key):
         # see: https://github.com/EnergieID/entsoe-py#EntsoePandasClient
-        self.e_client = EntsoePandasClient(os.getenv("ENTSOE_API_KEY", ""))
+        self.e_client = EntsoePandasClient(entsoe_api_key)
         self.data = OrderedDict()
         self._init_data()
 
@@ -211,8 +211,8 @@ class DataHandler:
 #     print(text)
 
 
-def fetch_forecast_data(country_code: str) -> OrderedDict[str,pd.DataFrame]:
-    data_handler = DataHandler()
+def fetch_forecast_data(country_code: str, entsoe_api_key) -> OrderedDict[str,pd.DataFrame]:
+    data_handler = DataHandler(entsoe_api_key)
     data_handler.get_new_data(country_code, forecast=True)
     data_handler.data["chart1_data"] = data_handler.calculate_chart1_data()
     data_handler.data["chart2_data"] = data_handler.calculate_chart2_data()
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     FORECAST = True
     load_dotenv(override=True)
-    data_handler = DataHandler()
+    data_handler = DataHandler(os.getenv("ENTSOE_API_KEY", ""))
     if FORECAST:
         data_handler.get_new_data("DE", forecast=True)
     else:

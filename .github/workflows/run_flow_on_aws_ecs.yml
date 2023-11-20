@@ -33,7 +33,7 @@ jobs:
         run: echo "### Workflow $GITHUB_WORKFLOW with GITHUB_SHA $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
 
       - name: Set AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -42,10 +42,11 @@ jobs:
       - name: Create new ECR repository using AWS CloudFormation
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
-          name: "${{ env.PROJECT }}-ecr"
+          name: "${{ env.PROJECT }}-ecr-repo"
           template: infrastructure/ecr_repository.yml
           parameter-overrides: "RepositoryName=${{ env.PROJECT }}"
           no-fail-on-empty-changeset: "1"
+          disable-rollback: "1"
 
       - name: ECR repository built
         run: echo "ECR repository built at $(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_STEP_SUMMARY
@@ -80,7 +81,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$PROJECT:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$PROJECT:$IMAGE_TAG . -e 
           docker push $ECR_REGISTRY/$PROJECT:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$PROJECT:$IMAGE_TAG"
 

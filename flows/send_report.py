@@ -1,14 +1,12 @@
-from prefect import flow, task
-from typing import OrderedDict, Dict, NamedTuple, List
-from datetime import timedelta
-from prefect import get_run_logger
-import pandas as pd
-import os
-from dotenv import load_dotenv
-from collections import namedtuple
-
-from prefect_email import EmailServerCredentials, email_send_message
+from prefect import flow, task, get_run_logger
+from prefect.blocks.system import Secret, String
 from prefect.task_runners import SequentialTaskRunner
+from prefect_email import EmailServerCredentials, email_send_message
+
+from typing import OrderedDict, NamedTuple, List
+import pandas as pd
+from dotenv import load_dotenv
+
 from data import fetch_forecast_data
 # from database_handling import (
 #     get_all_users_from_database,
@@ -26,7 +24,7 @@ def get_registered_users_task() -> List[User]:
     # todo: users=[Users(**user) for user in get_all_users_from_database()]
     # todo: uncomment again: return get_all_users_from_database()
     # for test purpose:
-    return [User("test_user",os.getenv("TEST_USER_EMAIL",""), "DE")]
+    return [User("test_user",String.load("test-email"), "DE")]
 
 
 @flow
@@ -71,7 +69,8 @@ def create_report_task(data: pd.DataFrame):
 
 @task(retries=3, retry_delay_seconds=60)
 def get_forecast_data_task(country_code: str) -> OrderedDict[str,pd.DataFrame]:
-    data_dict = fetch_forecast_data(country_code)
+    entsoe_api_key = Secret.load("entsoe-api-key").get()
+    data_dict = fetch_forecast_data(country_code, entsoe_api_key)
     return data_dict
 
 
