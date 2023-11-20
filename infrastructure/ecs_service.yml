@@ -30,7 +30,7 @@ Parameters:
   region:
     Type: String
     Description: AWS region name
-    Default: us-east-1
+    Default: eu-central-1
   image:
     Type: String
     Description: Docker image for the service
