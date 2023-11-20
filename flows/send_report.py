@@ -1,43 +1,52 @@
 from prefect import flow, task
-from typing import OrderedDict
+from typing import OrderedDict, Dict, NamedTuple, List
 from datetime import timedelta
 from prefect import get_run_logger
 import pandas as pd
 import os
 from dotenv import load_dotenv
+from collections import namedtuple
 
 from prefect_email import EmailServerCredentials, email_send_message
+from prefect.task_runners import SequentialTaskRunner
 from data import fetch_forecast_data
 # from database_handling import (
 #     get_all_users_from_database,
 # )
 
+class User(NamedTuple):
+    name: str
+    email: str
+    country_code: str
 
 
 @task(retries=3, retry_delay_seconds=60)
-def get_registered_users_task():
+def get_registered_users_task() -> List[User]:
     """Read all registered users from database"""
+    # todo: users=[Users(**user) for user in get_all_users_from_database()]
     # todo: uncomment again: return get_all_users_from_database()
     # for test purpose:
-    return [{"name": "test_user", "email": os.getenv("TEST_USER_EMAIL",""), "country_code": "DE"}]
+    return [User("test_user",os.getenv("TEST_USER_EMAIL",""), "DE")]
 
 
 @flow
-def send_email_flow(email_address, data):
+def send_email_flow(user: User, data: str):
     assert isinstance(data, str)
     logger = get_run_logger()
     logger.info(data)
-    logger.info(email_address)
+    logger.info(user.email)
     email_server_credentials = EmailServerCredentials.load("my-email-credentials")
     # attachment = pathlib.Path(__file__).parent.absolute() / "attachment.txt"
     # with open(attachment, "rb") as f:
     #     attachment_text = f.read()
-    
+    line1 = f"Hello {user.name}, <br>"
+    line2 = f"Please find our lastest update for the following region: {user.country_code}<br><br>"
+    line3 = f"<h1>Forecast:</h1>"
     subject = email_send_message.with_options(name="send-an-email").submit(
         email_server_credentials=email_server_credentials,
-        subject="Prefect email notification",
-        msg=data,
-        email_to=email_address,
+        subject="Prefect Notification",
+        msg=line1+line2+line3+data,
+        email_to=user.email,
         #attachments=["example.txt"]
     )
     return subject
@@ -66,22 +75,22 @@ def get_forecast_data_task(country_code: str) -> OrderedDict[str,pd.DataFrame]:
     return data_dict
 
 
-@flow()
+@flow(task_runner=SequentialTaskRunner(), retries=5, retry_delay_seconds=5)
 def send_energy_report_flow():
     users = get_registered_users_task()
     logger=get_run_logger()
     for user in users:
-        data_dict = get_forecast_data_task(user["country_code"])
+        data_dict = get_forecast_data_task(user.country_code)
         data = data_dict["df_generation_forecast"] # popitem has better TC than accessing last one
         logger.info(data)
         # send_task(data, user["email"])
-        send_email_flow(user["email"], data.to_frame().to_html())
+        send_email_flow(user, data.to_frame().to_html())
 
 
 if __name__ == "__main__":
     load_dotenv(override=True)
-    deploy = False
+    deploy = True
     if deploy:
-        send_energy_report_flow.serve(name="my-first-deployment")
+        send_energy_report_flow.serve(name="my-energy_report-deployment", cron="0 * * * 1")
     else:
         send_energy_report_flow()
