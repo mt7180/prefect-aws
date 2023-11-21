@@ -36,10 +36,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Prefect Cloud login
+        run: |
+          prefect config set PREFECT_API_KEY=${{secrets.PREFECT_API_KEY}} 
+          prefect cloud workspace set --workspace "energy-data-dashboard"
+
+    #   - name: Run the flow
+    #     run: |
+    #     export PYTHONPATH="${PYTHONPATH}:/home/runner/work/prefect-getting-started/prefect-getting-started/"
+    #     python flows/${{ github.event.inputs.flow }}
+
       - name: Run Flow 
-        run: python -m flows
-        env:
-          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
-          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:/home/runner/work/prefect-aws/prefect-aws/"
+          python -m flows
+        # env:
+        #   PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
+        #   PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
          
     
