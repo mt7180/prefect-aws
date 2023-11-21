@@ -3,7 +3,7 @@ name: run selected flow on github
 on:
   workflow_dispatch:
     inputs:
-      which_flow:
+      flow:
         description: Choose which flow to run
         required: true
         type: choice

@@ -2,12 +2,15 @@ from prefect import flow, task, get_run_logger
 from prefect.blocks.system import Secret, String
 from prefect.task_runners import SequentialTaskRunner
 from prefect_email import EmailServerCredentials, email_send_message
+from prefect.utilities.annotations import quote
 
-from typing import OrderedDict, NamedTuple, List
+from typing import OrderedDict, List, Dict, NamedTuple
 import pandas as pd
 from dotenv import load_dotenv
 
-from data import fetch_forecast_data
+from flows.data import extract_forecast_data_task
+
+#from data import fetch_forecast_data
 # from database_handling import (
 #     get_all_users_from_database,
 # )
@@ -24,15 +27,16 @@ def get_registered_users_task() -> List[User]:
     # todo: users=[Users(**user) for user in get_all_users_from_database()]
     # todo: uncomment again: return get_all_users_from_database()
     # for test purpose:
-    return [User("test_user",String.load("test-email"), "DE")]
+    user_email = String.load("test-email").value
+    # return [User(name="test_user",email=user_email, country_code="DE")]
+    return [User("test_user",user_email, "BE")]
 
 
-@flow
+@flow(validate_parameters=False)
 def send_email_flow(user: User, data: str):
     assert isinstance(data, str)
     logger = get_run_logger()
     logger.info(data)
-    logger.info(user.email)
     email_server_credentials = EmailServerCredentials.load("my-email-credentials")
     # attachment = pathlib.Path(__file__).parent.absolute() / "attachment.txt"
     # with open(attachment, "rb") as f:
@@ -67,29 +71,64 @@ def create_report_task(data: pd.DataFrame):
     pass
 
 
-@task(retries=3, retry_delay_seconds=60)
-def get_forecast_data_task(country_code: str) -> OrderedDict[str,pd.DataFrame]:
+@flow(retries=3, retry_delay_seconds=60)
+def extract_data_flow(country_code: str) -> OrderedDict[str,pd.DataFrame]:
     entsoe_api_key = Secret.load("entsoe-api-key").get()
-    data_dict = fetch_forecast_data(country_code, entsoe_api_key)
+    data_dict = extract_forecast_data_task(country_code, entsoe_api_key)
     return data_dict
 
+########################
+# entry_point:
 
 @flow(task_runner=SequentialTaskRunner(), retries=5, retry_delay_seconds=5)
 def send_energy_report_flow():
     users = get_registered_users_task()
-    logger=get_run_logger()
+    logger = get_run_logger()
     for user in users:
-        data_dict = get_forecast_data_task(user.country_code)
-        data = data_dict["df_generation_forecast"] # popitem has better TC than accessing last one
+        data_dict = extract_data_flow(user.country_code)
+        data: pd.DataFrame = data_dict.get("df_generation_forecast", pd.Series())
         logger.info(data)
         # send_task(data, user["email"])
         send_email_flow(user, data.to_frame().to_html())
 
+#########################
 
-if __name__ == "__main__":
+def main(deploy: bool = False) -> None:
+    """ execute or deploy (depends on deploy parameter) the prefect flow to send an email with an 
+    updated dashboard report to each registered user
+    """
     load_dotenv(override=True)
-    deploy = True
     if deploy:
-        send_energy_report_flow.serve(name="my-energy_report-deployment", cron="0 * * * 1")
+        send_energy_report_flow.serve(
+            name="energy-report-deployment", 
+            cron="0 * * * *",    # every hour
+            pause_on_shutdown=False,
+        ) 
     else:
         send_energy_report_flow()
+
+if __name__ == "__main__":
+    main(deploy=False)
+
+
+#######
+# A deployment created with the Python *flow.serve* method or the serve 
+# function runs flows in a subprocess on the same machine where the deployment 
+# is created. It does not use a work pool or worker.
+
+# https://docs.prefect.io/latest/guides/prefect-deploy/
+#  flow.deploy(
+#         name="my-code-baked-into-an-image-deployment", 
+#         work_pool_name="my-docker-pool", 
+#         image="my_registry/my_image:my_image_tag"
+#     )
+
+# if no image:
+# flow.from_source(
+#         "https://github.com/my_github_account/my_repo/my_file.git",
+#         entrypoint="flows/no-image.py:hello_world",
+#     ).deploy(
+#         name="no-image-deployment",
+#         work_pool_name="my_pool",
+#         build=False
+#     )

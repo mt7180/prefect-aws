@@ -7,11 +7,13 @@ import logging
 from requests import HTTPError, ConnectionError
 from entsoe import EntsoePandasClient
 from entsoe.exceptions import NoMatchingDataError
-from prefect import flow
+# from prefect import flow
+from dotenv import load_dotenv
 
 logging_level = logging.DEBUG
 logging.basicConfig(stream=sys.stdout, level=logging_level)
 logging.getLogger(__name__).addHandler(logging.StreamHandler(stream=sys.stdout))
+load_dotenv(override=True)
 
 DEBUG = int(os.getenv("DEBUG_APP2", 0))
 
@@ -54,11 +56,12 @@ class DataHandler:
         #         "info from prefect: app performs entsoe api call"
         #     )
         now = pd.Timestamp.today(tz="Europe/Brussels")
+        start_t = now - pd.Timedelta(hours=24)
         if forecast:
-            start_t = now
+            # start_t = now
             end_t = now + pd.Timedelta(hours=24)
         else:
-            start_t = now - pd.Timedelta(hours=24)
+            # start_t = now - pd.Timedelta(hours=24)
             end_t = now
         try:
             queries = [
@@ -69,8 +72,8 @@ class DataHandler:
             ]
 
             for df_name, query in zip(self.data.keys(), queries):
-                if forecast and not any(key in query.__name__ for key in ("forecast", "capacity")):
-                    continue
+                #if forecast and not any(key in query.__name__ for key in ("forecast", "capacity")):
+                #    continue
                 self.data[df_name] = query(
                     country_code,
                     start=start_t
@@ -199,8 +202,8 @@ class DataHandler:
             "Fuel", axis="columns", inplace=True
         )
         chart_data = pd.concat(
-            [self.data["df_installed_capacity"].T, self.df_current_generation.T]
-        )
+            [self.data["df_installed_capacity"].T, self.df_current_generation.T], axis=1,join="outer"
+        ).fillna(0)
         chart_data.columns = ["capacity", "generated"]
         return chart_data
 
@@ -209,11 +212,15 @@ class DataHandler:
 # def send_a_message_with_prefect(text: str) -> None:
 #     # just as first test:
 #     print(text)
+from prefect import task
 
-
-def fetch_forecast_data(country_code: str, entsoe_api_key) -> OrderedDict[str,pd.DataFrame]:
+@task
+def extract_forecast_data_task(country_code: str, entsoe_api_key) -> OrderedDict[str,pd.DataFrame]:
+    #from prefect import get_run_logger
+    #logger = get_run_logger()
     data_handler = DataHandler(entsoe_api_key)
     data_handler.get_new_data(country_code, forecast=True)
+    #logger.info(data_handler.data["df_generation_forecast"].head())
     data_handler.data["chart1_data"] = data_handler.calculate_chart1_data()
     data_handler.data["chart2_data"] = data_handler.calculate_chart2_data()
     return data_handler.data
@@ -221,8 +228,8 @@ def fetch_forecast_data(country_code: str, entsoe_api_key) -> OrderedDict[str,pd
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
-    FORECAST = True
-    load_dotenv(override=True)
+    FORECAST = False
+    # load_dotenv(override=True)
     data_handler = DataHandler(os.getenv("ENTSOE_API_KEY", ""))
     if FORECAST:
         data_handler.get_new_data("DE", forecast=True)
@@ -232,10 +239,11 @@ if __name__ == "__main__":
 
     print(data_handler.data["df_generation"].head())
     print(data_handler.data["df_generation_forecast"].head())
-    print(data_handler.data["df_installed_capacity"].head())
+    print(data_handler.data["df_installed_capacity"])
     print(data_handler.data["df_wind_and_solar_forecast"].head())
+    print(data_handler.df_current_generation)
     print(data_handler.calculate_chart1_data().head())
-    print(data_handler.calculate_chart2_data().head())
+    print(data_handler.calculate_chart2_data())
 
     # import requests
     # from entsoe import EntsoeRawClient
