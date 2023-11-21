@@ -38,7 +38,7 @@ jobs:
 
       - name: Prefect Cloud login
         run: |
-          prefect config set PREFECT_API_KEY=${{secrets.PREFECT_API_KEY}} 
+          prefect config set PREFECT_API_KEY=${{secrets.PREFECT_WORKSPACE}} 
           prefect cloud workspace set --workspace "energy-data-dashboard"
 
     #   - name: Run the flow
