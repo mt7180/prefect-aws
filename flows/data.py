@@ -100,6 +100,7 @@ class DataHandler:
                 Error: Something went wrong with the http connection {e}
             """
         for key in self.data:
+            logging.info(f"{key=}")
             logging.info(self.data[key].head())
 
     def clean_api_data(self) -> None:
@@ -216,20 +217,16 @@ from prefect import task
 
 @task
 def extract_forecast_data_task(country_code: str, entsoe_api_key) -> OrderedDict[str,pd.DataFrame]:
-    #from prefect import get_run_logger
-    #logger = get_run_logger()
     data_handler = DataHandler(entsoe_api_key)
     data_handler.get_new_data(country_code, forecast=True)
-    #logger.info(data_handler.data["df_generation_forecast"].head())
     data_handler.data["chart1_data"] = data_handler.calculate_chart1_data()
     data_handler.data["chart2_data"] = data_handler.calculate_chart2_data()
     return data_handler.data
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
     FORECAST = False
-    # load_dotenv(override=True)
+
     data_handler = DataHandler(os.getenv("ENTSOE_API_KEY", ""))
     if FORECAST:
         data_handler.get_new_data("DE", forecast=True)

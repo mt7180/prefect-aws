@@ -2,11 +2,10 @@ from prefect import flow, task, get_run_logger
 from prefect.blocks.system import Secret, String
 from prefect.task_runners import SequentialTaskRunner
 from prefect_email import EmailServerCredentials, email_send_message
-from prefect.utilities.annotations import quote
 
 from typing import OrderedDict, List, Dict, NamedTuple
 import pandas as pd
-from dotenv import load_dotenv
+import sys
 
 from flows.data import extract_forecast_data_task
 
@@ -97,18 +96,45 @@ def main(deploy: bool = False) -> None:
     """ execute or deploy (depends on deploy parameter) the prefect flow to send an email with an 
     updated dashboard report to each registered user
     """
-    load_dotenv(override=True)
+    from prefect.deployments.runner  import DeploymentImage
+    import pathlib
+
+    # load_dotenv(override=True)
+    cfd = pathlib.Path(__file__).parent
     if deploy:
-        send_energy_report_flow.serve(
-            name="energy-report-deployment", 
-            cron="0 * * * *",    # every hour
-            pause_on_shutdown=False,
-        ) 
+        # send_energy_report_flow.serve(
+        #     name="my-test-deployment", 
+        #    # cron="0 * * * *",    # every hour
+        #    # pause_on_shutdown=False,
+        # )
+        print("flow will be deployed ...")
+        send_energy_report_flow.deploy(
+            "test_deploy_newsletter", 
+            work_pool_name="newsletter_docker_workpool", 
+            #interval=3600,
+            image=DeploymentImage(
+                name="newsletter-flow-ghcr",
+                tag="test",
+                dockerfile=cfd.parent / "Dockerfile",
+            ),
+            push=False
+        )
     else:
         send_energy_report_flow()
 
 if __name__ == "__main__":
-    main(deploy=False)
+    
+
+    # Access command-line arguments, if '-deploy' argument is given,
+    # prefect flow will be deployed, else locally executed
+    if len(sys.argv) > 1 and sys.argv[1] == "-deploy":
+        deploy = True
+    else:
+        deploy = False
+
+    # execute or deploy (depends on deploy parameter) the prefect flow to send an
+    #  email with an updated dashboard report to each registered user
+    main(deploy=deploy)
 
 
 #######
@@ -132,3 +158,8 @@ if __name__ == "__main__":
 #         work_pool_name="my_pool",
 #         build=False
 #     )
+
+# ECS Worker Guide
+# https://prefecthq.github.io/prefect-aws/ecs_guide/
+
+# https://docs.prefect.io/latest/tutorial/workers/

@@ -1,5 +1,5 @@
 name: Create Infrastructure and Deploy Prefect Flow to AWS ECS
-
+run-name: IaC + Deploy Prefect Flow to AWS ECS triggered by @${{ github.actor }}
 on:
   workflow_dispatch:
     inputs:
@@ -83,7 +83,7 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$PROJECT:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$PROJECT:$IMAGE_TAG
-          echo "::set-output name=image::$ECR_REGISTRY/$PROJECT:$IMAGE_TAG"
+          echo "image=$ECR_REGISTRY/$PROJECT:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: ECR image built
         run: echo "ECR image ${{ steps.build-image.outputs.image }} built at $(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,7 @@
-FROM prefecthq/prefect:2-python3.10-conda
+FROM --platform=linux/amd64 prefecthq/prefect:2-latest
 COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY flows/ .
-CMD ["python", "send_report.py"]
+WORKDIR /code
+COPY ./requirements.txt ./requirements.txt
+RUN pip install --upgrade  -r requirements.txt
+COPY /flows /code/flows
+CMD python -m flows
