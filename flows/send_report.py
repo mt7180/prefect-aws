@@ -102,23 +102,41 @@ def main(deploy: bool = False) -> None:
     # load_dotenv(override=True)
     cfd = pathlib.Path(__file__).parent
     if deploy:
+        ## Deployment via long running serve method locally
         # send_energy_report_flow.serve(
         #     name="my-test-deployment", 
         #    # cron="0 * * * *",    # every hour
         #    # pause_on_shutdown=False,
         # )
         print("flow will be deployed ...")
+        # # Deployment via Docker container running locally
+        # send_energy_report_flow.deploy(
+        #     "test_deploy_newsletter", 
+        #     work_pool_name="newsletter_docker_workpool", 
+        #     #interval=3600,
+        #     image=DeploymentImage(
+        #         name="newsletter-flow-ghcr",
+        #         tag="test",
+        #         dockerfile=cfd.parent / "Dockerfile",
+        #     ),
+        #     push=False
+        # )
+        #################
+        # before deploying this login to aws ecr
+        # https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html
+
         send_energy_report_flow.deploy(
-            "test_deploy_newsletter", 
-            work_pool_name="newsletter_docker_workpool", 
-            #interval=3600,
+            "deploy_newsletter_on_ecs", 
+            work_pool_name="miras-push-workpool", 
+            # image="039166537875.dkr.ecr.eu-central-1.amazonaws.com/send-energy-report:prefect-deployed",
             image=DeploymentImage(
-                name="newsletter-flow-ghcr",
-                tag="test",
-                dockerfile=cfd.parent / "Dockerfile",
-            ),
-            push=False
+               name="039166537875.dkr.ecr.eu-central-1.amazonaws.com/send-energy-report",
+               tag="prefect-deployed_wodeploy",
+               dockerfile=cfd.parent / "Dockerfile",
+            )
+            #build=False,
         )
+        #####################
     else:
         send_energy_report_flow()
 
