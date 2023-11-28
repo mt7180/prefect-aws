@@ -107,6 +107,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - ssm:GetParameters
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
                 Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
@@ -132,6 +135,13 @@ Resources:
                   - athena:*
                   - glue:*
                   - s3:*
+                  - ecs:RegisterTaskDefinition
+                  - ecs:DeregisterTaskDefinition
+                  - ecs:DescribeTasks
+                  - ecs:RunTask
+                  - logs:GetLogEvents
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
                 Resource: "*"
 
   PrefectTaskDefinition:

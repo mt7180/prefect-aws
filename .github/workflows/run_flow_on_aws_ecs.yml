@@ -1,5 +1,5 @@
 name: Create Infrastructure and Deploy Prefect Flow to AWS ECS
-run-name: IaC + Deploy Prefect Flow to AWS ECS triggered by @${{ github.actor }}
+run-name: IaC + Install Prefect Worker + Deploy Prefect Flow to AWS ECS triggered by @${{ github.actor }}
 on:
   workflow_dispatch:
     inputs:
