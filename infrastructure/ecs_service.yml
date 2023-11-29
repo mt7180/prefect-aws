@@ -172,20 +172,20 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
 
-  PrefectECSService:
-    Type: AWS::ECS::Service
-    DependsOn:
-      - SubnetRouteTableAssociation
-      - RouteToGateway
-      - PrefectFargateCluster
-    Properties:
-      ServiceName: !Ref project
-      Cluster: !Ref PrefectFargateCluster
-      TaskDefinition: !Ref PrefectTaskDefinition
-      DesiredCount: 1
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref PrefectECSServiceSubnet
+  # PrefectECSService:
+  #   Type: AWS::ECS::Service
+  #   DependsOn:
+  #     - SubnetRouteTableAssociation
+  #     - RouteToGateway
+  #     - PrefectFargateCluster
+  #   Properties:
+  #     ServiceName: !Ref project
+  #     Cluster: !Ref PrefectFargateCluster
+  #     TaskDefinition: !Ref PrefectTaskDefinition
+  #     DesiredCount: 1
+  #     LaunchType: FARGATE
+  #     NetworkConfiguration:
+  #       AwsvpcConfiguration:
+  #         AssignPublicIp: ENABLED
+  #         Subnets:
+  #           - !Ref PrefectECSServiceSubnet

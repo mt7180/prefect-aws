@@ -133,8 +133,8 @@ def main(deploy: bool = False) -> None:
                name="039166537875.dkr.ecr.eu-central-1.amazonaws.com/send-energy-report",
                tag="prefect-deployed_wodeploy",
                dockerfile=cfd.parent / "Dockerfile",
-            )
-            #build=False,
+            ),
+            build=False,
         )
         #####################
     else:
