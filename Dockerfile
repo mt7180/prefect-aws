@@ -3,5 +3,7 @@ COPY requirements.txt .
 WORKDIR /code
 COPY ./requirements.txt ./requirements.txt
 RUN pip install --upgrade  -r requirements.txt
-COPY /flows /code/flows
-CMD python -m flows
+COPY /prefect_flows /code/prefect_flows
+COPY /data_extraction /code/data_extraction
+COPY /user_management /code/user_management
+CMD python -m prefect_flows

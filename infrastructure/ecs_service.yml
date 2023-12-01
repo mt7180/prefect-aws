@@ -72,6 +72,7 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
+
   PrefectECSServiceSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -82,6 +83,7 @@ Resources:
           - 0
           - Fn::GetAZs: { Ref: 'AWS::Region' }
       MapPublicIpOnLaunch: true
+
   SubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -144,33 +146,33 @@ Resources:
                   - ec2:DescribeVpcs
                 Resource: "*"
 
-  PrefectTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Ref project
-      Cpu: !Ref cpu
-      Memory: !Ref memory
-      NetworkMode: awsvpc
-      ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref TaskRole
-      ContainerDefinitions:
-        - Name: !Ref project
-          Image: !Ref image
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-region: !Ref AWS::Region
-              awslogs-group: !Ref PrefectLogGroup
-              awslogs-stream-prefix: !Ref project
-          Secrets:
-            - Name: PREFECT_API_URL
-              ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/PREFECT_API_URL"
-            - Name: PREFECT_API_KEY
-              ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/PREFECT_API_KEY"
-#            - Name: SLACK_WEBHOOK_URL
-#              ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/SLACK_WEBHOOK_URL"
-      RequiresCompatibilities:
-        - FARGATE
+#   PrefectTaskDefinition:
+#     Type: AWS::ECS::TaskDefinition
+#     Properties:
+#       Family: !Ref project
+#       Cpu: !Ref cpu
+#       Memory: !Ref memory
+#       NetworkMode: awsvpc
+#       ExecutionRoleArn: !Ref ExecutionRole
+#       TaskRoleArn: !Ref TaskRole
+#       ContainerDefinitions:
+#         - Name: !Ref project
+#           Image: !Ref image
+#           LogConfiguration:
+#             LogDriver: awslogs
+#             Options:
+#               awslogs-region: !Ref AWS::Region
+#               awslogs-group: !Ref PrefectLogGroup
+#               awslogs-stream-prefix: !Ref project
+#           Secrets:
+#             - Name: PREFECT_API_URL
+#               ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/PREFECT_API_URL"
+#             - Name: PREFECT_API_KEY
+#               ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/PREFECT_API_KEY"
+# #            - Name: SLACK_WEBHOOK_URL
+# #              ValueFrom: !Sub "arn:aws:ssm:${region}:${awsaccountid}:parameter/SLACK_WEBHOOK_URL"
+#       RequiresCompatibilities:
+#         - FARGATE
 
   # PrefectECSService:
   #   Type: AWS::ECS::Service

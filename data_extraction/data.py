@@ -209,20 +209,6 @@ class DataHandler:
         return chart_data
 
 
-# @flow
-# def send_a_message_with_prefect(text: str) -> None:
-#     # just as first test:
-#     print(text)
-from prefect import task
-
-@task
-def extract_forecast_data_task(country_code: str, entsoe_api_key) -> OrderedDict[str,pd.DataFrame]:
-    data_handler = DataHandler(entsoe_api_key)
-    data_handler.get_new_data(country_code, forecast=True)
-    data_handler.data["chart1_data"] = data_handler.calculate_chart1_data()
-    data_handler.data["chart2_data"] = data_handler.calculate_chart2_data()
-    return data_handler.data
-
 
 if __name__ == "__main__":
     FORECAST = False
